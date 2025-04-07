@@ -57,7 +57,7 @@
   <arg name="ordered_pc"                default="false"/>                     <!-- 是否使用有序点云 -->
 
   <arg name="enable_sync"               default="false"/>                     <!-- 是否同步所有传感器数据，防止时序错乱 -->
-  <arg name="align_depth"               default="false"/>                      <!-- 是否对齐深度图到其他图像 -->
+  <arg name="align_depth"               default="true"/>                      <!-- 是否对齐深度图到其他图像 -->
 
   <arg name="publish_tf"                default="true"/>                      <!-- 是否发布相机的 TF 变换 -->
   <arg name="tf_publish_rate"           default="0"/>                         <!-- TF 发布的频率，0 表示只在变换更新时才发布 -->
