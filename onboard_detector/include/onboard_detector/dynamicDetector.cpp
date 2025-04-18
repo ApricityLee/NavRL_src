@@ -545,9 +545,12 @@ namespace onboardDetector{
     void dynamicDetector::registerCallback(){
         // depth pose callback
         this->depthSub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(this->nh_, this->depthTopicName_, 50));
+        // 这里的 50，是订阅队列的长度： message_filters::Subscriber 在接收消息时，最多会缓存 50 条未处理的消息。
         if (this->localizationMode_ == 0){
             this->poseSub_.reset(new message_filters::Subscriber<geometry_msgs::PoseStamped>(this->nh_, this->poseTopicName_, 25));
             this->depthPoseSync_.reset(new message_filters::Synchronizer<depthPoseSync>(depthPoseSync(100), *this->depthSub_, *this->poseSub_));
+            //这个 depthPoseSync(100) 也是队列大小，但是同步器的缓存长度 -> 可以缓存多达 100 对未匹配的消息，用来寻找合适的匹配
+            // std::cout << "[DEBUG]成功创建同步器" << endl;
             this->depthPoseSync_->registerCallback(boost::bind(&dynamicDetector::depthPoseCB, this, _1, _2));
         }
         else if (this->localizationMode_ == 1){
@@ -639,6 +642,7 @@ namespace onboardDetector{
     }
 
     void dynamicDetector::depthPoseCB(const sensor_msgs::ImageConstPtr& img, const geometry_msgs::PoseStampedConstPtr& pose){
+        // this->depthPoseSync_->registerCallback(boost::bind(&dynamicDetector::depthPoseCB, this, _1, _2));
         // store current depth image
         cv_bridge::CvImagePtr imgPtr = cv_bridge::toCvCopy(img, img->encoding);
         if (img->encoding == sensor_msgs::image_encodings::TYPE_32FC1){

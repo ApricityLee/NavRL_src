@@ -1,0 +1,158 @@
+<launch>
+  <arg name="serial_no"           default=""/>                                <!-- 相机的序列号 -->
+  <arg name="usb_port_id"         default=""/>                                <!-- 相机连接的 USB 端口 -->
+  <arg name="device_type"         default=""/>                                <!-- 设备类型 -->
+  <arg name="json_file_path"      default=""/>                                <!-- 加载相机的 JSON 配置文件，用于设置高级参数。 -->
+  <arg name="camera"              default="camera"/>                          <!-- ROS 命名空间，所有的相机话题都会挂在 camera/ 下 -->
+  <arg name="tf_prefix"           default="$(arg camera)"/>                   <!-- 用于 TF 坐标变换，多个相机时可避免冲突 -->
+  <arg name="external_manager"    default="false"/>
+  <arg name="manager"             default="realsense2_camera_manager"/>
+  <arg name="output"              default="screen"/>
+  <arg name="respawn"              default="false"/>
+
+  <!-- 鱼眼相机配置 -->
+  <arg name="fisheye_width"       default="-1"/>
+  <arg name="fisheye_height"      default="-1"/>
+  <arg name="enable_fisheye"      default="false"/>
+
+  <!-- 深度相机配置 -->
+  <arg name="depth_width"         default="-1"/>
+  <arg name="depth_height"        default="-1"/>
+  <arg name="enable_depth"        default="true"/>
+
+  <!-- Realsense 深度相机的置信度图（confidence map） 的参数 -->
+  <arg name="confidence_width"    default="-1"/>
+  <arg name="confidence_height"   default="-1"/>
+  <arg name="enable_confidence"   default="true"/>
+  <arg name="confidence_fps"      default="-1"/>
+
+  <!-- 红外相机配置 -->
+  <arg name="infra_width"         default="848"/>
+  <arg name="infra_height"        default="480"/>
+  <arg name="enable_infra"        default="false"/>
+  <arg name="enable_infra1"       default="false"/>
+  <arg name="enable_infra2"       default="false"/>
+  <arg name="infra_rgb"           default="false"/>
+
+  <!-- 彩色相机配置 -->
+  <arg name="color_width"         default="-1"/>
+  <arg name="color_height"        default="-1"/>
+  <arg name="enable_color"        default="true"/>
+
+  <!-- 帧率配置 -->
+  <arg name="fisheye_fps"         default="-1"/>
+  <arg name="depth_fps"           default="-1"/>
+  <arg name="infra_fps"           default="30"/>
+  <arg name="color_fps"           default="-1"/>
+  <arg name="gyro_fps"            default="-1"/>
+  <arg name="accel_fps"           default="-1"/>
+  <arg name="enable_gyro"         default="true"/>                            <!-- 陀螺仪 -->
+  <arg name="enable_accel"        default="true"/>                            <!-- 加速度计 -->
+
+  <!-- 点云参数设置 -->
+  <arg name="enable_pointcloud"         default="false"/>
+  <arg name="pointcloud_texture_stream" default="RS2_STREAM_COLOR"/>          <!-- 点云的纹理流 -->
+  <arg name="pointcloud_texture_index"  default="0"/>
+  <arg name="allow_no_texture_points"   default="false"/>                     <!-- 是否允许无纹理点出现在点云中 -->
+  <arg name="ordered_pc"                default="false"/>                     <!-- 是否使用有序点云 -->
+
+  <arg name="enable_sync"               default="true"/>                     <!-- 是否同步所有传感器数据，防止时序错乱 -->
+  <arg name="align_depth"               default="true"/>                      <!-- 是否对齐深度图到其他图像 -->
+
+  <arg name="publish_tf"                default="true"/>                      <!-- 是否发布相机的 TF 变换 -->
+  <arg name="tf_publish_rate"           default="0"/>                         <!-- TF 发布的频率，0 表示只在变换更新时才发布 -->
+
+  <arg name="filters"                   default=""/>                          <!-- 应用 滤波器（如 temporal、spatial） -->
+  <arg name="clip_distance"             default="-2"/>                        <!-- 设定 裁剪距离，-2 表示 默认不裁剪 -->
+  <arg name="linear_accel_cov"          default="0.01"/>                      <!-- 线性加速度计噪声协方差 -->
+  <arg name="initial_reset"             default="false"/>                     <!-- 是否重置相机 -->
+  <arg name="reconnect_timeout"         default="6.0"/>                       <!-- 掉线后的重连时间 -->
+  <arg name="wait_for_device_timeout"   default="-1.0"/>                      <!-- 相机启动时等待设备的超时时间 -->
+  <arg name="unite_imu_method"          default="copy"/>                      <!-- copy（默认）：简单复制数据，不做融合，候选 linear_interpolation -->
+  <arg name="topic_odom_in"             default="odom_in"/>                   <!-- 输入的里程计话题名称，odom_in 是默认值 -->
+  <arg name="calib_odom_file"           default=""/>                          <!-- 里程计标定文件的路径，通常用于外部里程计数据的转换，确保机器人的运动与传感器数据匹配 -->
+  <arg name="publish_odom_tf"           default="true"/>                      <!-- 是否发布里程计的坐标变换（TF） -->
+
+  <arg name="stereo_module/exposure/1"  default="7500"/>                      <!-- 左摄像头的曝光时间，单位为微秒（μs） -->
+  <arg name="stereo_module/gain/1"      default="16"/>                        <!-- 左摄像头的增益 -->
+  <arg name="stereo_module/exposure/2"  default="1"/>                         <!-- 右摄像头的曝光时间，单位为微秒（μs） -->
+  <arg name="stereo_module/gain/2"      default="16"/>                        <!-- 右摄像头的增益 -->
+  
+  
+
+  <group ns="$(arg camera)">
+    <include file="$(find realsense2_camera)/launch/includes/nodelet.launch.xml">
+    <!-- 以下的参数在上面已有定义，改动请在上面修改 -->
+      <arg name="tf_prefix"                value="$(arg tf_prefix)"/>
+      <arg name="external_manager"         value="$(arg external_manager)"/>
+      <arg name="manager"                  value="$(arg manager)"/>
+      <arg name="output"                   value="$(arg output)"/>
+      <arg name="respawn"                  value="$(arg respawn)"/>
+      <arg name="serial_no"                value="$(arg serial_no)"/>
+      <arg name="usb_port_id"              value="$(arg usb_port_id)"/>
+      <arg name="device_type"              value="$(arg device_type)"/>
+      <arg name="json_file_path"           value="$(arg json_file_path)"/>
+
+      <arg name="enable_pointcloud"        value="$(arg enable_pointcloud)"/>
+      <arg name="pointcloud_texture_stream" value="$(arg pointcloud_texture_stream)"/>
+      <arg name="pointcloud_texture_index"  value="$(arg pointcloud_texture_index)"/>
+      <arg name="enable_sync"              value="$(arg enable_sync)"/>
+      <arg name="align_depth"              value="$(arg align_depth)"/>
+
+      <arg name="fisheye_width"            value="$(arg fisheye_width)"/>
+      <arg name="fisheye_height"           value="$(arg fisheye_height)"/>
+      <arg name="enable_fisheye"           value="$(arg enable_fisheye)"/>
+
+      <arg name="depth_width"              value="$(arg depth_width)"/>
+      <arg name="depth_height"             value="$(arg depth_height)"/>
+      <arg name="enable_depth"             value="$(arg enable_depth)"/>
+
+      <arg name="confidence_width"         value="$(arg confidence_width)"/>
+      <arg name="confidence_height"        value="$(arg confidence_height)"/>
+      <arg name="enable_confidence"        value="$(arg enable_confidence)"/>
+      <arg name="confidence_fps"           value="$(arg confidence_fps)"/>
+
+      <arg name="color_width"              value="$(arg color_width)"/>
+      <arg name="color_height"             value="$(arg color_height)"/>
+      <arg name="enable_color"             value="$(arg enable_color)"/>
+
+      <arg name="infra_width"              value="$(arg infra_width)"/>
+      <arg name="infra_height"             value="$(arg infra_height)"/>
+      <arg name="enable_infra"             value="$(arg enable_infra)"/>
+      <arg name="enable_infra1"            value="$(arg enable_infra1)"/>
+      <arg name="enable_infra2"            value="$(arg enable_infra2)"/>
+      <arg name="infra_rgb"                value="$(arg infra_rgb)"/>
+
+      <arg name="fisheye_fps"              value="$(arg fisheye_fps)"/>
+      <arg name="depth_fps"                value="$(arg depth_fps)"/>
+      <arg name="infra_fps"                value="$(arg infra_fps)"/>
+      <arg name="color_fps"                value="$(arg color_fps)"/>
+      <arg name="gyro_fps"                 value="$(arg gyro_fps)"/>
+      <arg name="accel_fps"                value="$(arg accel_fps)"/>
+      <arg name="enable_gyro"              value="$(arg enable_gyro)"/>
+      <arg name="enable_accel"             value="$(arg enable_accel)"/>
+
+      <arg name="publish_tf"               value="$(arg publish_tf)"/>
+      <arg name="tf_publish_rate"          value="$(arg tf_publish_rate)"/>
+
+      <arg name="filters"                  value="$(arg filters)"/>
+      <arg name="clip_distance"            value="$(arg clip_distance)"/>
+      <arg name="linear_accel_cov"         value="$(arg linear_accel_cov)"/>
+      <arg name="initial_reset"            value="$(arg initial_reset)"/>
+      <arg name="reconnect_timeout"        value="$(arg reconnect_timeout)"/>
+      <arg name="wait_for_device_timeout"  value="$(arg wait_for_device_timeout)"/>
+      <arg name="unite_imu_method"         value="$(arg unite_imu_method)"/>
+      <arg name="topic_odom_in"            value="$(arg topic_odom_in)"/>
+      <arg name="calib_odom_file"          value="$(arg calib_odom_file)"/>
+      <arg name="publish_odom_tf"          value="$(arg publish_odom_tf)"/>
+      <arg name="stereo_module/exposure/1" value="$(arg stereo_module/exposure/1)"/>
+      <arg name="stereo_module/gain/1"     value="$(arg stereo_module/gain/1)"/>
+      <arg name="stereo_module/exposure/2" value="$(arg stereo_module/exposure/2)"/>
+      <arg name="stereo_module/gain/2"     value="$(arg stereo_module/gain/2)"/>
+
+      <arg name="allow_no_texture_points"  value="$(arg allow_no_texture_points)"/>
+      <arg name="ordered_pc"               value="$(arg ordered_pc)"/>
+      
+    </include>
+  </group>
+</launch>

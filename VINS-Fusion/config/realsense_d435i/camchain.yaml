@@ -1,0 +1,7 @@
+ cam0:  #640*480
+  camera_model: pinhole
+  intrinsics: [622.125761, 622.026252, 309.241303, 276.046520]
+  distortion_model: radtan
+  distortion_coeffs: [0.124759, -0.183207, 0.008839, -0.002229]
+  rostopic: /color
+  resolution: [640, 480]
