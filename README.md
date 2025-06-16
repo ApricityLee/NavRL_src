@@ -1,7 +1,6 @@
 # NavRL: Learning Safe Flight in Dynamic Environments
 [![Python](https://img.shields.io/badge/python-3.10-4B8BBE.svg)](https://docs.python.org/3/whatsnew/3.10.html)
 [![ROS1](https://img.shields.io/badge/ROS1-Noetic-green.svg)](https://wiki.ros.org/noetic)
-[![ROS2](https://img.shields.io/badge/ROS2-Humble-F39C12.svg)](https://docs.ros.org/en/humble/index.html)
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-NVIDIA-C0392B.svg)](https://docs.omniverse.nvidia.com/isaacsim/latest/overview.html)
 [![Linux platform](https://img.shields.io/badge/platform-Ubuntu-27AE60.svg)](https://releases.ubuntu.com/22.04/)
 
@@ -16,11 +15,6 @@ Welcome to the NavRL repository! This repository provides the implementation of 
     <td><img src="media/NavRL-demo3.gif" style="width: 100%;"></td>
   </tr>
 </table>
-
-
-For additional details, please refer to the related paper available here:
-
-Zhefan Xu, Xinming Han, Haoyu Shen, Hanyu Jin, and Kenji Shimada, "NavRL: Learning Safe Flight in Dynamic Environments”, *IEEE Robotics and Automation Letters (RA-L)*, 2025. [\[IEEE Xplore\]](https://ieeexplore.ieee.org/document/10904341) [\[preprint\]](https://arxiv.org/pdf/2409.15634) [\[YouTube\]](https://youtu.be/EbeJW8-YlvI) [\[BiliBili\]](https://www.bilibili.com/video/BV1gsA9eTErz/?share_source=copy_web&vd_source=1333db331406abb1b5d4cece1e253427)
 
 
 ## News
@@ -189,59 +183,5 @@ https://github.com/user-attachments/assets/b7cc7e2e-c01d-4e44-87e3-97271a3aaa0f
 
 To change the environment settings, review the launch file at ```ros1/uav_simulator/launch/start.launch```. The parameters for each module are located in ```ros1/navigation_runner/cfg/*.yaml``` configuration files.
 
-
-## IV. NavRL ROS2 Deployment
-This section demonstrates an example of deploying NavRL with ROS2 and Isaac Sim using a Unitree Go2 quadruped robot. Ensure that your system meets the following requirements:
-- Ubuntu 22.04 LTS
-- ROS2 Humble
-
-Before get started, please install the simulator based on [this link](https://github.com/Zhefan-Xu/isaac-go2-ros2).
-
-First, copy the ```ros2``` folder from this repository into your ros2 workspace.
-```
-cp ros2 /path/to/ros2_ws/src
-colcon build --symlink-install
-```
-Then, start the simulation and deploy NavRL navigation.
-```
-# Launch Isaac Go2 simulator
-conda activate isaaclab
-cd /path/to/isaac-go2-ros2
-python isaac-go2-ros2.py
-
-# Start the perception and safety module
-ros2 launch navigation_runner perception.launch.py
-ros2 launch navigation_runner safe_action.launch.py # optional
-
-# Turn on Rviz2 visualization
-ros2 launch navigation_runner rviz.launch.py
-
-# Run the navigation launch
-conda activate NavRL
-ros2 launch navigation_runner navigation.launch.py
-```
-An Isaac Sim window will display the environment while an RViz window presents the data. Use RViz's ```2D Nav Goal``` tool to set the navigation target. The navigation example is shown in the following video:
-
-
-https://github.com/user-attachments/assets/4787f503-d8a3-4d7b-9d17-7057b2cff1eb
-
-
-## V. Citation and Reference
-If our work is useful to your research, please consider citing our paper.
-```
-@ARTICLE{NavRL,
-  author={Xu, Zhefan and Han, Xinming and Shen, Haoyu and Jin, Hanyu and Shimada, Kenji},
-  journal={IEEE Robotics and Automation Letters}, 
-  title={NavRL: Learning Safe Flight in Dynamic Environments}, 
-  year={2025},
-  volume={10},
-  number={4},
-  pages={3668-3675},
-  keywords={Navigation;Robots;Collision avoidance;Training;Safety;Vehicle dynamics;Heuristic algorithms;Detectors;Autonomous aerial vehicles;Learning systems;Aerial systems: Perception and autonomy;reinforcement learning;collision avoidance},
-  doi={10.1109/LRA.2025.3546069}}
-```
-
-## VI. Acknowledgement
-The authors would like to express their sincere gratitude to Professor Kenji Shimada for his great support and all CERLAB UAV team members who contribute to the development of this research.
 
 The Isaac Sim training component of the NavRL framework is built upon [OmniDrones](https://github.com/btx0424/OmniDrones).
