@@ -25,9 +25,6 @@ Welcome to the NavRL repository! This repository provides the implementation of 
  - [Training in NVIDIA Isaac Sim](#I-Training-in-NVIDIA-Isaac-Sim)
  - [Deployment Virtual Environment](#II-Deployment-Virtual-Environment)
  - [NavRL ROS1 Deployment](#III-NavRL-ROS1-Deployment)
- - [NavRL ROS2 Deployment](#IV-NavRL-ROS2-Deployment)
- - [Citation and Reference](#V-Citation-and-Reference)
- - [Acknowledgement](#VI-Acknowledgement)
 
 ## NavRL Quick Demos in 3 Minutes
 We provide a pretrained model and easy-to-run Python scripts for quick demos of the NavRL framework.
