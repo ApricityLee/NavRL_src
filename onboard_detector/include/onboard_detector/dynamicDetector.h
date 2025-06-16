@@ -13,6 +13,8 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/AccelStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <vision_msgs/Detection2DArray.h>
@@ -28,6 +30,11 @@
 #include <onboard_detector/kalmanFilter.h>
 #include <onboard_detector/utils.h>
 #include <onboard_detector/GetDynamicObstacles.h>
+#include <chrono>
+
+
+using Clock = std::chrono::high_resolution_clock;
+using TimePoint = std::chrono::time_point<Clock>;
 
 namespace onboardDetector{
     class dynamicDetector{
@@ -47,6 +54,9 @@ namespace onboardDetector{
         ros::Subscriber alignedDepthSub_; 
         ros::Subscriber yoloDetectionSub_;
         ros::Subscriber colorImgSub_;
+        ros::Subscriber P1PoseSub_;
+        ros::Subscriber P1TwistSub_;
+        ros::Subscriber P1AccelSub_;
         ros::Timer detectionTimer_;
         ros::Timer trackingTimer_;
         ros::Timer classificationTimer_;
@@ -93,6 +103,9 @@ namespace onboardDetector{
         std::string colorImgTopicName_;
         std::string poseTopicName_;
         std::string odomTopicName_;
+        std::string P1PoseTopicName_;
+        std::string P1TwistTopicName_;
+        std::string P1AccelTopicName_;
         double raycastMaxLength_;
         double groundHeight_;
         int dbMinPointsCluster_;
@@ -166,6 +179,33 @@ namespace onboardDetector{
         cv::Mat detectedAlignedDepthImg_;
         cv::Mat detectedColorImage_;
 
+        // Evaluate Data
+        geometry_msgs::PoseStamped P1Pose_;
+        geometry_msgs::TwistStamped P1Twist_;
+        geometry_msgs::AccelStamped P1Accel_;
+
+
+        // Time 
+        std::vector<double> uvDetectTimes_;
+        std::vector<double> dbscanTimes_;
+        std::vector<double> kalmanTimes_;
+        std::vector<double> yoloTimes_;
+        // 时间累计统计（单位：ms）
+        double totalUvDetectTime_ = 0.0;
+        int uvDetectCount_ = 0;
+
+        double totalDbscanDetectTime_ = 0.0;
+        int dbscanDetectCount_ = 0;
+
+        double totalBoxAssociationTime_ = 0.0;
+        int boxAssociationCount_ = 0;
+
+        double totalKalmanFilterTime_ = 0.0;
+        int kalmanFilterCount_ = 0;
+
+        double totalClassificationTime_ = 0.0;
+        int classificationCount_ = 0;
+
     public:
         dynamicDetector();
         dynamicDetector(const ros::NodeHandle& nh);
@@ -190,6 +230,9 @@ namespace onboardDetector{
         void trackingCB(const ros::TimerEvent&);
         void classificationCB(const ros::TimerEvent&);
         void visCB(const ros::TimerEvent&);
+        void P1PoseCB(const geometry_msgs::PoseStampedConstPtr&);
+        void P1TwistCB(const geometry_msgs::TwistStampedConstPtr&);
+        void P1AccelCB(const geometry_msgs::AccelStampedConstPtr&);
 
         // detect function
         void uvDetect();
@@ -267,6 +310,7 @@ namespace onboardDetector{
         void getDynamicObstaclesHist(std::vector<std::vector<Eigen::Vector3d>>& posHist, 
 									 std::vector<std::vector<Eigen::Vector3d>>& velHist, 
 									 std::vector<std::vector<Eigen::Vector3d>>& sizeHist, const Eigen::Vector3d &robotSize = Eigen::Vector3d(0.0,0.0,0.0));
+        void getEvaPara();
     };
 
 

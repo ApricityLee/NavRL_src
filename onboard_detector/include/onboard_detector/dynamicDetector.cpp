@@ -64,6 +64,33 @@ namespace onboardDetector{
             cout << this->hint_ << ": Color image topic: " << this->colorImgTopicName_ << endl;
         }
 
+        // P1 Pose name
+        if (not this->nh_.getParam(this->ns_ + "/P1_Pose_topic", this->P1PoseTopicName_)){
+            this->P1PoseTopicName_ = "/vrpn_client_node/P1/pose";
+            cout << this->hint_ << ": No P1 Pose topic name. Use default: /vrpn_client_node/P1/pose" << endl;
+        }
+        else{
+            cout << this->hint_ << ": P1 Pose topic: " << this->P1PoseTopicName_ << endl;
+        }
+
+        // P1 Twist name
+        if (not this->nh_.getParam(this->ns_ + "/P1_Twist_topic", this->P1TwistTopicName_)){
+            this->P1TwistTopicName_ = "/vrpn_client_node/P1/twist";
+            cout << this->hint_ << ": No P1 twist topic name. Use default: /vrpn_client_node/P1/twist" << endl;
+        }
+        else{
+            cout << this->hint_ << ": P1 Twist topic: " << this->P1TwistTopicName_ << endl;
+        }
+
+        // P1 Accel name
+        if (not this->nh_.getParam(this->ns_ + "/P1_Accel_topic", this->P1AccelTopicName_)){
+            this->P1AccelTopicName_ = "/vrpn_client_node/P1/accel";
+            cout << this->hint_ << ": No P1 Accel topic name. Use default: /vrpn_client_node/P1/accel" << endl;
+        }
+        else{
+            cout << this->hint_ << ": P1 Accel topic: " << this->P1AccelTopicName_ << endl;
+        }
+
         if (this->localizationMode_ == 0){
             // odom topic name
             if (not this->nh_.getParam(this->ns_ + "/pose_topic", this->poseTopicName_)){
@@ -571,6 +598,16 @@ namespace onboardDetector{
 
         // yolo detection results subscriber
         this->yoloDetectionSub_ = this->nh_.subscribe("yolo_detector/detected_bounding_boxes", 10, &dynamicDetector::yoloDetectionCB, this);
+        // &dynamicDetector::yoloDetectionCB,        // 回调函数
+
+        // P1 Pose subscriber
+        this->P1PoseSub_ = this->nh_.subscribe(this->P1PoseTopicName_, 10, &dynamicDetector::P1PoseCB, this);
+
+        // P1 Twist subscriber
+        this->P1TwistSub_ = this->nh_.subscribe(this->P1TwistTopicName_, 10, &dynamicDetector::P1TwistCB, this);
+        
+        // P1 Accel subscriber
+        this->P1AccelSub_ = this->nh_.subscribe(this->P1AccelTopicName_, 10, &dynamicDetector::P1AccelCB, this);
 
         // detection timer
         this->detectionTimer_ = this->nh_.createTimer(ros::Duration(this->dt_), &dynamicDetector::detectionCB, this);
@@ -586,9 +623,9 @@ namespace onboardDetector{
 
 		// get dynamic obstacle service
 		this->getDynamicObstacleServer_ = this->nh_.advertiseService("onboard_detector/get_dynamic_obstacles", &dynamicDetector::getDynamicObstacles, this);
-    }
+    }       // TODO
 
-    bool dynamicDetector::getDynamicObstacles(onboard_detector::GetDynamicObstacles::Request& req, 
+    bool dynamicDetector::getDynamicObstacles(onboard_detector::GetDynamicObstacles::Request& req,          // TODO
                                               onboard_detector::GetDynamicObstacles::Response& res) {
         // Get the current robot position
         Eigen::Vector3d currPos = Eigen::Vector3d (req.current_position.x, req.current_position.y, req.current_position.z);
@@ -707,7 +744,50 @@ namespace onboardDetector{
 
     void dynamicDetector::yoloDetectionCB(const vision_msgs::Detection2DArrayConstPtr& detections){
         this->yoloDetectionResults_ = *detections;
+        // 用来缓存最新的一帧检测结果到类成员 yoloDetectionResults_ 中
     }
+
+    void dynamicDetector::P1PoseCB(const geometry_msgs::PoseStampedConstPtr& msg){
+        this->P1Pose_ = *msg;
+
+        double x = msg->pose.position.x;
+        double y = msg->pose.position.y;
+        double z = msg->pose.position.z;
+
+        double qx = msg->pose.orientation.x;
+        double qy = msg->pose.orientation.y;
+        double qz = msg->pose.orientation.z;
+        double qw = msg->pose.orientation.w;
+    }
+
+    void dynamicDetector::P1TwistCB(const geometry_msgs::TwistStampedConstPtr& msg){
+        this->P1Twist_ = *msg;
+    
+        double vx = msg->twist.linear.x;
+        double vy = msg->twist.linear.y;
+        double vz = msg->twist.linear.z;
+    
+        double wx = msg->twist.angular.x;
+        double wy = msg->twist.angular.y;
+        double wz = msg->twist.angular.z;
+    
+        // 可在此处进行运动分析、速度滤波等操作
+    }
+    
+    void dynamicDetector::P1AccelCB(const geometry_msgs::AccelStampedConstPtr& msg){
+        this->P1Accel_ = *msg;
+    
+        double ax = msg->accel.linear.x;
+        double ay = msg->accel.linear.y;
+        double az = msg->accel.linear.z;
+    
+        double wx = msg->accel.angular.x;
+        double wy = msg->accel.angular.y;
+        double wz = msg->accel.angular.z;
+    
+        // 这里可以做加速度相关的处理，比如轨迹预测、震动检测等
+    }
+    
 
     void dynamicDetector::colorImgCB(const sensor_msgs::ImageConstPtr& img){
         cv_bridge::CvImagePtr imgPtr = cv_bridge::toCvCopy(img, img->encoding);
@@ -739,6 +819,9 @@ namespace onboardDetector{
     }
 
     void dynamicDetector::classificationCB(const ros::TimerEvent&){
+        TimePoint start = Clock::now();
+
+
         // Identification thread
         std::vector<onboardDetector::box3D> dynamicBBoxesTemp;
 
@@ -886,6 +969,8 @@ namespace onboardDetector{
                     dynamicBBoxesTemp.push_back(this->boxHist_[i][0]);    
                 }
             }
+
+
         }
 
         // filter the dynamic obstacles based on the target sizes
@@ -916,6 +1001,15 @@ namespace onboardDetector{
         }
 
         this->dynamicBBoxes_ = dynamicBBoxesTemp;
+
+        TimePoint end = Clock::now();
+        double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0; // 毫秒
+        totalClassificationTime_ += duration;
+        classificationCount_++;
+        double avg_time = totalClassificationTime_ / classificationCount_;
+        ROS_INFO_STREAM("[AvgTime] classification average: " << avg_time << " ms over " << classificationCount_ << " frames");
+
+
     }
 
     void dynamicDetector::visCB(const ros::TimerEvent&){
@@ -937,6 +1031,7 @@ namespace onboardDetector{
     }
 
     void dynamicDetector::uvDetect(){
+        TimePoint start = Clock::now();
         // initialization
         if (this->uvDetector_ == NULL){
             this->uvDetector_.reset(new UVdetector ());
@@ -963,9 +1058,25 @@ namespace onboardDetector{
             this->transformUVBBoxes(uvBBoxes);
             this->uvBBoxes_ = uvBBoxes;
         }
+        TimePoint end = Clock::now();
+        double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0; // 毫秒
+        // ROS_INFO_STREAM("[Time] uvDetect took " << duration << " ms");
+
+        totalUvDetectTime_ += duration;
+        uvDetectCount_++;
+
+        // 可选：保存到成员变量里以便可视化或记录
+        // double uvDetectTime_ = duration;
+        // uvDetectTimes_.push_back(duration);
+
+        double avg_time = totalUvDetectTime_ / uvDetectCount_;
+        ROS_INFO_STREAM("[AvgTime] uvDetect average: " << avg_time << " ms over " << uvDetectCount_ << " frames");
+
     }
 
     void dynamicDetector::dbscanDetect(){
+        TimePoint start = Clock::now();
+
         // 1. get pointcloud
         this->projectDepthImage();
 
@@ -977,6 +1088,14 @@ namespace onboardDetector{
 
         // 4. cluster points and get bounding boxes
         this->clusterPointsAndBBoxes(this->filteredPoints_, this->dbBBoxes_, this->pcClusters_, this->pcClusterCenters_, this->pcClusterStds_);
+
+        TimePoint end = Clock::now();
+        double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0; // 毫秒
+        totalDbscanDetectTime_ += duration;
+        dbscanDetectCount_++;
+        double avg_time = totalDbscanDetectTime_ / dbscanDetectCount_;
+        ROS_INFO_STREAM("[AvgTime] dbscanDetect average: " << avg_time << " ms over " << dbscanDetectCount_ << " frames");
+
     }
 
     void dynamicDetector::yoloDetectionTo3D(){
@@ -984,7 +1103,11 @@ namespace onboardDetector{
         for (size_t i=0; i<this->yoloDetectionResults_.detections.size(); ++i){
             onboardDetector::box3D bbox3D;
             cv::Rect bboxVis;
-            this->getYolo3DBBox(this->yoloDetectionResults_.detections[i], bbox3D, bboxVis);
+
+            // 将 2D bbox + 深度图 转为 3D 框
+            this->getYolo3DBBox(this->yoloDetectionResults_.detections[i], bbox3D, bboxVis);    
+
+            // 在对齐后的深度图上画出检测框（可视化）
             cv::rectangle(this->detectedAlignedDepthImg_, bboxVis, cv::Scalar(0, 255, 0), 5, 8, 0);
             yoloBBoxesTemp.push_back(bbox3D);
         }
@@ -1357,14 +1480,17 @@ namespace onboardDetector{
             box.z = (zmax + zmin)/2.0;
             box.x_width = (xmax - xmin)>0.1?(xmax-xmin):0.1;
             box.y_width = (ymax - ymin)>0.1?(ymax-ymin):0.1;
-            box.z_width = (zmax - zmin);
+            box.z_width = (zmax - zmin)>0.1?(zmax-zmin):0.1;
+            // box.z_width = (zmax - zmin);
             bboxes.push_back(box);
         }
     }
 
     void dynamicDetector::voxelFilter(const std::vector<Eigen::Vector3d>& points, std::vector<Eigen::Vector3d>& filteredPoints){
         const double res = 0.1; // resolution of voxel
-        int xVoxels = ceil(2*this->localSensorRange_(0)/res); int yVoxels = ceil(2*this->localSensorRange_(1)/res); int zVoxels = ceil(2*this->localSensorRange_(2)/res);
+        int xVoxels = ceil(2*this->localSensorRange_(0)/res); 
+        int yVoxels = ceil(2*this->localSensorRange_(1)/res); 
+        int zVoxels = ceil(2*this->localSensorRange_(2)/res);
         int totalVoxels = xVoxels * yVoxels * zVoxels;
         // std::vector<bool> voxelOccupancyVec (totalVoxels, false);
         std::vector<int> voxelOccupancyVec (totalVoxels, 0);
@@ -1451,51 +1577,61 @@ namespace onboardDetector{
 
     void dynamicDetector::getYolo3DBBox(const vision_msgs::Detection2D& detection, onboardDetector::box3D& bbox3D, cv::Rect& bboxVis){
         if (this->alignedDepthImage_.empty()){
+            std::cerr << "alignedDepthImage_ is empty!" << std::endl;
             return;
         }
+        // std::cout << "alignedDepthImage_: " << this->alignedDepthImage_.cols << "x" << this->alignedDepthImage_.rows << std::endl;
+        // 此函数 z 轴坐标系出了问题
 
         const Eigen::Vector3d humanSize (0.5, 0.5, 1.8);
 
-        // 1. retrive 2D detection result
-        int topX = int(detection.bbox.center.x); 
+        // 1. retrive 2D detection result  提取2D框信息，准备可视化框 bboxVis
+        int topX = int(detection.bbox.center.x);            // 这部分直接用了center点作为左上角
         int topY = int(detection.bbox.center.y); 
         int xWidth = int(detection.bbox.size_x); 
         int yWidth = int(detection.bbox.size_y); 
-        bboxVis.x = topX;
+        bboxVis.x = topX;   
         bboxVis.y = topY;
         bboxVis.height = yWidth;
         bboxVis.width = xWidth;
+        // 到这一步应该还没有什么问题，因为这一步也还是二维平面图像的处理
 
         // 2. get thickness estimation (double MAD: double Median Absolute Deviation)
         uint16_t* rowPtr;
         double depth;
         const double inv_factor = 1.0 / this->depthScale_;
-        int vMin = std::min(topY, this->depthFilterMargin_);
-        int uMin = std::min(topX, this->depthFilterMargin_);
+        int vMin = std::max(topY, this->depthFilterMargin_);
+        int uMin = std::max(topX, this->depthFilterMargin_);
         int vMax = std::min(topY+yWidth, this->imgRows_-this->depthFilterMargin_);
         int uMax = std::min(topX+xWidth, this->imgCols_-this->depthFilterMargin_);
         std::vector<double> depthValues;
+        // std::cout << "Collected " << depthValues.size() << " depth values in bbox" << std::endl;
+        // Collected 0 depth values in bbox
+        // 这边跑 demo 也是同样的情况，0 depth alues
 
 
         // record the depth values in the potential regions
         for (int v=vMin; v<vMax; ++v){ // row
             rowPtr = this->alignedDepthImage_.ptr<uint16_t>(v);
             for (int u=uMin; u<uMax; ++u){ // column
-                depth = (*rowPtr) * inv_factor;
+                depth = (*rowPtr) * inv_factor;     // // 恢复实际深度
                 if (depth >= this->depthMinValue_ and depth <= this->depthMaxValue_){
-                    depthValues.push_back(depth);
+                    depthValues.push_back(depth);       // 满足条件的深度值记录下来
                 }
                 ++rowPtr;
             }
         }
         if (depthValues.size() == 0){ // in case of out of range
+            std::cerr << "depthValues is 0!" << std::endl;
             return;
         }
 
         // double MAD calculation
         double depthMedian, MAD;
         this->calculateMAD(depthValues, depthMedian, MAD);
-        // cout << "MAD: " << MAD << endl;
+        // std::cout << "MAD: " << MAD << endl;
+        // std::cout << "depthMedian: " << depthMedian << endl;
+        // 到这里也没问题
 
         double depthMin = 10.0; double depthMax = -10.0;
         // find min max depth value
@@ -1522,13 +1658,16 @@ namespace onboardDetector{
 
         // 3. project points into 3D in the camera frame
         Eigen::Vector3d pUL, pBR, center;
+        // 2D -> 3D 投影定理
+        // pUL(position Upper Left)
         pUL(0) = (topX - this->cxC_) * depthMedian / this->fxC_;
         pUL(1) = (topY - this->cyC_) * depthMedian / this->fyC_;
         pUL(2) = depthMedian;
-
+        // pBR(position Bottom Right)
         pBR(0) = (topX + xWidth - this->cxC_) * depthMedian / this->fxC_;
         pBR(1) = (topY + yWidth- this->cyC_) * depthMedian / this->fyC_;
         pBR(2) = depthMedian;
+
 
         center(0) = (pUL(0) + pBR(0))/2.0;
         center(1) = (pUL(1) + pBR(1))/2.0;
@@ -1536,7 +1675,8 @@ namespace onboardDetector{
 
         double xWidth3D = std::abs(pBR(0) - pUL(0));
         double yWidth3D = std::abs(pBR(1) - pUL(1));
-        double zWidth3D = depthMax - depthMin; 
+        double zWidth3D = depthMax - depthMin;
+        
         if ((zWidth3D/humanSize(2)>=2.0) or (zWidth3D/humanSize(2) <= 0.5)){ // error is too large, then use the predefined size
             zWidth3D = humanSize(2);
         }       
@@ -1584,6 +1724,8 @@ namespace onboardDetector{
 
 
     void dynamicDetector::boxAssociation(std::vector<int>& bestMatch, std::vector<int> &boxOOR){
+        TimePoint start = Clock::now();
+
         int numObjs = int(this->filteredBBoxes_.size());
         
         if (this->boxHist_.size() == 0){ // initialize new bounding box history if no history exists
@@ -1609,7 +1751,16 @@ namespace onboardDetector{
         }
 
         this->newDetectFlag_ = false; // the most recent detection has been associated
-    }
+
+        TimePoint end = Clock::now();
+        double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0; // 毫秒
+        totalBoxAssociationTime_ += duration;
+        boxAssociationCount_++;
+        double avg_time = totalBoxAssociationTime_ / boxAssociationCount_;
+        ROS_INFO_STREAM("[AvgTime] boxAssociation average: " << avg_time << " ms over " << boxAssociationCount_ << " frames");
+}
+
+    
 
     void dynamicDetector::boxAssociationHelper(std::vector<int>& bestMatch, std::vector<int> &boxOOR){
         int numObjs = int(this->filteredBBoxes_.size());
@@ -1794,6 +1945,8 @@ namespace onboardDetector{
     }
 
     void dynamicDetector::kalmanFilterAndUpdateHist(const std::vector<int>& bestMatch, const std::vector<int> &boxOOR){
+        TimePoint start = Clock::now();
+
         std::vector<std::deque<onboardDetector::box3D>> boxHistTemp; 
         std::vector<std::deque<std::vector<Eigen::Vector3d>>> pcHistTemp;
         std::vector<onboardDetector::kalman_filter> filtersTemp;
@@ -1943,6 +2096,13 @@ namespace onboardDetector{
         // update tracked bounding boxes
         this->trackedBBoxes_=  trackedBBoxesTemp;
 
+        TimePoint end = Clock::now();
+        double duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0; // 毫秒
+        totalKalmanFilterTime_ += duration;
+        kalmanFilterCount_++;
+        double avg_time = totalKalmanFilterTime_ / kalmanFilterCount_;
+        ROS_INFO_STREAM("[AvgTime] kalmanFilter average: " << avg_time << " ms over " << kalmanFilterCount_ << " frames");
+
     }
 
     void dynamicDetector::kalmanFilterMatrixVel(const onboardDetector::box3D& currDetectedBBox, MatrixXd& states, MatrixXd& A, MatrixXd& B, MatrixXd& H, MatrixXd& P, MatrixXd& Q, MatrixXd& R){
@@ -2081,7 +2241,7 @@ namespace onboardDetector{
         cloud.width = cloud.points.size();
         cloud.height = 1;
         cloud.is_dense = true;
-        cloud.header.frame_id = "map";
+        cloud.header.frame_id = "world";
 
         sensor_msgs::PointCloud2 cloudMsg;
         pcl::toROSMsg(cloud, cloudMsg);
@@ -2093,7 +2253,7 @@ namespace onboardDetector{
         // visualization using bounding boxes 
         visualization_msgs::Marker line;
         visualization_msgs::MarkerArray lines;
-        line.header.frame_id = "map";
+        line.header.frame_id = "world";
         line.type = visualization_msgs::Marker::LINE_LIST;
         line.action = visualization_msgs::Marker::ADD;
         line.ns = "box3D";  
@@ -2117,13 +2277,15 @@ namespace onboardDetector{
             line.text = " Vx " + std::to_string(boxes[i].Vx) + " Vy " + std::to_string(boxes[i].Vy);
             double x = boxes[i].x; 
             double y = boxes[i].y; 
-            double z = (boxes[i].z+boxes[i].z_width/2)/2; 
+            double z = boxes[i].z; 
+            // double z = (boxes[i].z+boxes[i].z_width/2)/2;
 
             // double x_width = std::max(boxes[i].x_width,boxes[i].y_width);
             // double y_width = std::max(boxes[i].x_width,boxes[i].y_width);
             double x_width = boxes[i].x_width;
             double y_width = boxes[i].y_width;
-            double z_width = 2*z;
+            double z_width = boxes[i].z_width;
+            // double z_width = 2*z;
 
             // double z = 
             
@@ -2194,7 +2356,7 @@ namespace onboardDetector{
         int countMarker = 0;
         for (size_t i=0; i<this->boxHist_.size(); ++i){
             visualization_msgs::Marker traj;
-            traj.header.frame_id = "map";
+            traj.header.frame_id = "world";
             traj.header.stamp = ros::Time::now();
             traj.ns = "dynamic_detector";
             traj.id = countMarker;
@@ -2227,7 +2389,7 @@ namespace onboardDetector{
         int countMarker = 0;
         for (size_t i=0; i<this->trackedBBoxes_.size(); ++i){
             visualization_msgs::Marker velMarker;
-            velMarker.header.frame_id = "map";
+            velMarker.header.frame_id = "world";
             velMarker.header.stamp = ros::Time::now();
             velMarker.ns = "dynamic_detector";
             velMarker.id =  countMarker;
@@ -2290,12 +2452,12 @@ namespace onboardDetector{
         double ymin=p1m(1); double ymax=p1m(1);
         double zmin=p1m(2); double zmax=p1m(2);
         for (Eigen::Vector3d pm : pointsMap){
-            if (pm(0) < xmin){xmin = pm(0);}
-            if (pm(0) > xmax){xmax = pm(0);}
-            if (pm(1) < ymin){ymin = pm(1);}
-            if (pm(1) > ymax){ymax = pm(1);}
-            if (pm(2) < zmin){zmin = pm(2);}
-            if (pm(2) > zmax){zmax = pm(2);}
+            if (pm(0) < xmin) xmin = pm(0);
+            if (pm(0) > xmax) xmax = pm(0);
+            if (pm(1) < ymin) ymin = pm(1);
+            if (pm(1) > ymax) ymax = pm(1);
+            if (pm(2) < zmin) zmin = pm(2);
+            if (pm(2) > zmax) zmax = pm(2);
         }
         newCenter(0) = (xmin + xmax)/2.0;
         newCenter(1) = (ymin + ymax)/2.0;
@@ -2408,4 +2570,64 @@ namespace onboardDetector{
             this->orientationHist_.push_front(this->orientation_);
         }
     }
+
+
+    void dynamicDetector::getEvaPara(){
+
+    // ground truth
+        // pose
+        double ground_x = this->P1Pose_.pose.position.x;
+        double ground_y = this->P1Pose_.pose.position.y;
+        double ground_z = this->P1Pose_.pose.position.z;
+        // vel
+        double ground_vx = this->P1Twist_.twist.linear.x;
+        double ground_vy = this->P1Twist_.twist.linear.y;
+        double ground_vz = this->P1Twist_.twist.linear.z;
+
+
+    // Pose 检验
+        // 仅 Udepth
+
+
+        // 无 YOLO
+
+
+        // 无卡尔曼滤波
+
+
+        // DODT
+
+
+
+    // Vel 检验
+        // 仅 Udepth
+
+
+        // 无 YOLO
+
+        // 无卡尔曼滤波
+
+        // DODT
+
+
+        // for (size_t j=0; j<this->boxHist_[i].size()-1; ++j){
+        //     geometry_msgs::Point p;
+        //     onboardDetector::box3D box = this->boxHist_[i][j];
+        //     p.x = box.x; p.y = box.y; p.z = box.z;
+
+        // }
+
+    // 
+        // for (size_t i=0; i<this->trackedBBoxes_.size(); ++i){
+        //     double vx = this->trackedBBoxes_[i].Vx;
+        //     double vy = this->trackedBBoxes_[i].Vy;
+        //     double vNorm = sqrt(vx*vx+vy*vy);
+        // }
+
+
+
+    }
+
+
 }
+

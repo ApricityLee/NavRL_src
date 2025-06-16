@@ -30,6 +30,9 @@ class yolo_detector:
         self.img_received = False
         self.img_detected = False
 
+        # in __init__ 添加以下成员变量用于统计
+        self.total_time = 0.0
+        self.total_frames = 0
 
         # init and load
         self.model = Detector(80, True).to(device)
@@ -56,12 +59,24 @@ class yolo_detector:
 
     def detect_callback(self, event):
         startTime = rospy.Time.now()
-        if (self.img_received == True):
+        if self.img_received:
             output = self.inference(self.img)
             self.detected_img, self.detected_bboxes = self.postprocess(self.img, output)
             self.img_detected = True
         endTime = rospy.Time.now()
-        self.time_pub.publish((endTime-startTime).to_sec())
+
+        # 单帧耗时
+        elapsed = (endTime - startTime).to_sec()
+        self.time_pub.publish(elapsed)
+
+        # 累加总耗时与帧数
+        self.total_time += elapsed
+        self.total_frames += 1
+
+        # 计算并打印累计平均时间（单位：毫秒）
+        avg_time_ms = (self.total_time / self.total_frames) * 1000
+        print(f"[YOLO-MAD] 当前累计平均检测耗时：{avg_time_ms:.2f} 毫秒（共 {self.total_frames} 帧）")
+
         
 
     def vis_callback(self, event):
